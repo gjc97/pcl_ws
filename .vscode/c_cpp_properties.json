@@ -68,6 +68,7 @@
         "/opt/ros/melodic/include/**",
         "/home/jy/lego_loam_ws/src/LeGO-LOAM/LeGO-LOAM/include/**",
         "/home/jy/gazabo_ws/src/vehicle_sim/vehicle/sensor_model/velodyne/velodyne_gazebo_plugins/include/**",
+        "/home/jy/ground_filter/pcl_ws/pcl_test/include/**",
         "/usr/include/**"
       ],
       "name": "ROS"

@@ -8,6 +8,7 @@ PclTestCore::PclTestCore(ros::NodeHandle &nh)
     pub_no_ground_ = nh.advertise<sensor_msgs::PointCloud2>("/filtered_points_no_ground", 10);
     pub_filtered_points_ = nh.advertise<sensor_msgs::PointCloud2>("/filtered_points", 10);
     ros::spin();
+    ROS_WARN_STREAM("TEST");
     
 }
 
