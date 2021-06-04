@@ -1,24 +1,26 @@
 #include "pcl_test_core.h"
-
+//PclTestCore core(nh);
 PclTestCore::PclTestCore(ros::NodeHandle &nh)
 {
-    sub_point_cloud_ = nh.subscribe("/velodyne_points", 10, &PclTestCore::point_cb, this);
-    //sub_point_cloud_ = nh.subscribe("/points_raw", 10, &PclTestCore::point_cb, this);
+    //创建一个发布者，订阅/points_raw话题，通过this指针来调用类内的回调函数。
+    sub_point_cloud_ = nh.subscribe("/points_raw", 10, &PclTestCore::point_cb, this);
+    //发布过分割出来的地面点云
     pub_ground_ = nh.advertise<sensor_msgs::PointCloud2>("/filtered_points_ground", 10);
+    //发布滤除地面之后的点
     pub_no_ground_ = nh.advertise<sensor_msgs::PointCloud2>("/filtered_points_no_ground", 10);
+    //发布voxel_grid_filter之后的点
     pub_filtered_points_ = nh.advertise<sensor_msgs::PointCloud2>("/filtered_points", 10);
     ros::spin();
-    }
+}
 
 PclTestCore::~PclTestCore() {}
 
-void PclTestCore::Spin()
-{
-}
-
+void PclTestCore::Spin() {}
+//参数列表：高度；输入点云（pcl格式点云）；输出点云
 void PclTestCore::clip_above(double clip_height, const pcl::PointCloud<pcl::PointXYZI>::Ptr in,
                              const pcl::PointCloud<pcl::PointXYZI>::Ptr out)
 {
+    //创建滤波对象
     pcl::ExtractIndices<pcl::PointXYZI> cliper;
 
     cliper.setInputCloud(in);
@@ -78,14 +80,16 @@ void PclTestCore::XYZI_to_RTZColor(const pcl::PointCloud<pcl::PointXYZI>::Ptr in
     for (size_t i = 0; i < in_cloud->points.size(); i++)
     {
         PointXYZIRTColor new_point;
+        //点云在xy平面距离圆心的距离
         auto radius = (float)sqrt(
             in_cloud->points[i].x * in_cloud->points[i].x + in_cloud->points[i].y * in_cloud->points[i].y);
+            //与x轴正方向的夹角单位度
         auto theta = (float)atan2(in_cloud->points[i].y, in_cloud->points[i].x) * 180 / M_PI;
         if (theta < 0)
         {
             theta += 360;
         }
-        //角度的微分
+        //角度的微分（索引？）
         auto radial_div = (size_t)floor(theta / RADIAL_DIVIDER_ANGLE);
         //半径的微分
         auto concentric_div = (size_t)floor(fabs(radius / concentric_divider_distance_));
@@ -101,7 +105,7 @@ void PclTestCore::XYZI_to_RTZColor(const pcl::PointCloud<pcl::PointXYZI>::Ptr in
 
         //radial divisions更加角度的微分组织射线
         out_radial_divided_indices[radial_div].indices.push_back(i);
-
+        //安照径向重排序后的点云
         out_radial_ordered_clouds[radial_div].push_back(new_point);
 
     } //end for
@@ -134,9 +138,11 @@ void PclTestCore::classify_pc(std::vector<PointCloudXYZIRTColor> &in_radial_orde
         float prev_height = -SENSOR_HEIGHT;
         bool prev_ground = false;
         bool current_ground = false;
-        for (size_t j = 0; j < in_radial_ordered_clouds[i].size(); j++) //loop through each point in the radial div
+        for (size_t j = 0; j < in_radial_ordered_clouds[i].size(); j++) //loop through each point in the radial div按照径向遍历每一个点
         {
+            //某个点的距离=当前点的半径=0；
             float points_distance = in_radial_ordered_clouds[i][j].radius - prev_radius;
+            //DEG2RAD：角度转弧度;height_threshold百年是的
             float height_threshold = tan(DEG2RAD(local_max_slope_)) * points_distance;
             float current_height = in_radial_ordered_clouds[i][j].point.z;
             float general_height_threshold = tan(DEG2RAD(general_max_slope_)) * in_radial_ordered_clouds[i][j].radius;
@@ -210,14 +216,16 @@ void PclTestCore::publish_cloud(const ros::Publisher &in_publisher,
 
 void PclTestCore::point_cb(const sensor_msgs::PointCloud2ConstPtr &in_cloud_ptr)
 {
-    pcl::PointCloud<pcl::PointXYZI>::Ptr current_pc_ptr(new pcl::PointCloud<pcl::PointXYZI>);
-    pcl::PointCloud<pcl::PointXYZI>::Ptr cliped_pc_ptr(new pcl::PointCloud<pcl::PointXYZI>);
+    //创建点云共享指针并初始化
+    pcl::PointCloud<pcl::PointXYZI>::Ptr current_pc_ptr(new pcl::PointCloud<pcl::PointXYZI>);//当前点云，用来存储sensor类型转换为pcl类型的数据
+    pcl::PointCloud<pcl::PointXYZI>::Ptr cliped_pc_ptr(new pcl::PointCloud<pcl::PointXYZI>);//切割后的点云
 
     pcl::fromROSMsg(*in_cloud_ptr, *current_pc_ptr);
-
+    //将高于雷达0.2米的点云去除
     clip_above(CLIP_HEIGHT, current_pc_ptr, cliped_pc_ptr);
-    pcl::PointCloud<pcl::PointXYZI>::Ptr remove_close(new pcl::PointCloud<pcl::PointXYZI>);
 
+    pcl::PointCloud<pcl::PointXYZI>::Ptr remove_close(new pcl::PointCloud<pcl::PointXYZI>);
+    //去除距离雷达<2.4m的点
     remove_close_pt(MIN_DISTANCE, cliped_pc_ptr, remove_close);
 
     PointCloudXYZIRTColor organized_points;
@@ -225,8 +233,9 @@ void PclTestCore::point_cb(const sensor_msgs::PointCloud2ConstPtr &in_cloud_ptr)
     std::vector<pcl::PointIndices> closest_indices;
     std::vector<PointCloudXYZIRTColor> radial_ordered_clouds;
 
+    //将点云安装segment分割为2250份
     radial_dividers_num_ = ceil(360 / RADIAL_DIVIDER_ANGLE);
-
+    //将点云进行排序？并转换为自定义类型
     XYZI_to_RTZColor(remove_close, organized_points,
                      radial_division_indices, radial_ordered_clouds);
 
@@ -236,8 +245,8 @@ void PclTestCore::point_cb(const sensor_msgs::PointCloud2ConstPtr &in_cloud_ptr)
 
     pcl::PointCloud<pcl::PointXYZI>::Ptr ground_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
     pcl::PointCloud<pcl::PointXYZI>::Ptr no_ground_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
-    //添加filter_pc_ptr指针，用来接受filter之后的点云数据
-    pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_pc_ptr(new pcl::PointCloud<pcl::PointXYZI>);
+    pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_pc_ptr(new pcl::PointCloud<pcl::PointXYZI>);//添加filter_pc_ptr指针，用来接受filter之后的点云数据
+
     pcl::ExtractIndices<pcl::PointXYZI> extract_ground;
     extract_ground.setInputCloud(remove_close);
     extract_ground.setIndices(boost::make_shared<pcl::PointIndices>(ground_indices));
@@ -253,7 +262,10 @@ void PclTestCore::point_cb(const sensor_msgs::PointCloud2ConstPtr &in_cloud_ptr)
     vg.setLeafSize(0.2f, 0.2f, 0.2f);
     vg.filter(*filtered_pc_ptr);
     publish_cloud(pub_filtered_points_, filtered_pc_ptr, in_cloud_ptr->header);
-
+    //3：消息头
+    publish_cloud(pub_ground_, ground_cloud_ptr, in_cloud_ptr->header);
+    ROS_WARN_STREAM("run_pc");
+    publish_cloud(pub_no_ground_, no_ground_cloud_ptr, in_cloud_ptr->header);
 
     //////pub for debug
     // sensor_msgs::PointCloud2 pub_pc;
@@ -263,8 +275,5 @@ void PclTestCore::point_cb(const sensor_msgs::PointCloud2ConstPtr &in_cloud_ptr)
 
     // pub_ground_.publish(pub_pc);
     //publish_cloud函数参数含义：1：传入的publisher；2：要发布的消息类型 的指针
-    //3：消息头
-    publish_cloud(pub_ground_, ground_cloud_ptr, in_cloud_ptr->header);
-    ROS_WARN_STREAM("run_pc");
-    publish_cloud(pub_no_ground_, no_ground_cloud_ptr, in_cloud_ptr->header);
+
 }

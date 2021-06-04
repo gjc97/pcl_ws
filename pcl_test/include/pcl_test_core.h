@@ -2,6 +2,7 @@
 
 #include <ros/ros.h>
 #include <sstream>
+//将传感器数据转换文pcl数据头文件
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/conversions.h>
@@ -17,11 +18,11 @@
 #define CLIP_HEIGHT 0.2 //截取掉高于雷达自身0.2米的点
 #define MIN_DISTANCE 2.4
 #define RADIAL_DIVIDER_ANGLE 0.16//用于分割segments
-#define SENSOR_HEIGHT 1.78
+#define SENSOR_HEIGHT 2.00//传感器高度
 
 #define concentric_divider_distance_ 0.01 //0.1 meters default，用于分割bins
 #define min_height_threshold_ 0.05
-#define local_max_slope_ 8   //max slope of the ground between points, degree
+#define local_max_slope_ 8   //最大坡度max slope of the ground between points, degree
 #define general_max_slope_ 5 //max slope of the ground in entire point cloud, degree
 #define reclass_distance_threshold_ 0.2
 
@@ -37,8 +38,9 @@ private:
 
   struct PointXYZIRTColor
   {
-    pcl::PointXYZI point;
-
+   
+    pcl::PointXYZI point; //实例化XYZI点云
+    
     float radius; //cylindric coords on XY Plane
     float theta;  //angle deg on XY plane
 
@@ -49,12 +51,11 @@ private:
   };
   typedef std::vector<PointXYZIRTColor> PointCloudXYZIRTColor;
 
-  size_t radial_dividers_num_;
+  size_t radial_dividers_num_;//2250
   size_t concentric_dividers_num_;
 
   void point_cb(const sensor_msgs::PointCloud2ConstPtr &in_cloud);
-  //添加点云栅格降采样处理函数
-  void point_vgf(const sensor_msgs::PointCloud2ConstPtr& in_cloud);
+
   void clip_above(double clip_height, const pcl::PointCloud<pcl::PointXYZI>::Ptr in, const pcl::PointCloud<pcl::PointXYZI>::Ptr out);
 
   void remove_close_pt(double min_distance, const pcl::PointCloud<pcl::PointXYZI>::Ptr in, const pcl::PointCloud<pcl::PointXYZI>::Ptr out);
