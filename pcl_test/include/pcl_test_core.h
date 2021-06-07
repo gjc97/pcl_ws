@@ -1,5 +1,5 @@
 #pragma once
-
+#include<iostream>
 #include <ros/ros.h>
 #include <sstream>
 //将传感器数据转换文pcl数据头文件
@@ -17,14 +17,14 @@
 
 #define CLIP_HEIGHT 0.2 //截取掉高于雷达自身0.2米的点
 #define MIN_DISTANCE 2.4
-#define RADIAL_DIVIDER_ANGLE 0.16//用于分割segments
+#define RADIAL_DIVIDER_ANGLE 0.18//用于分割segments
 #define SENSOR_HEIGHT 2.00//传感器高度
 
 #define concentric_divider_distance_ 0.01 //0.1 meters default，用于分割bins
 #define min_height_threshold_ 0.05
-#define local_max_slope_ 8   //最大坡度max slope of the ground between points, degree
-#define general_max_slope_ 5 //max slope of the ground in entire point cloud, degree
-#define reclass_distance_threshold_ 0.2
+#define local_max_slope_ 8   //最大坡度：同一条射线上相邻两点的坡度阈值，max slope of the ground between points, degree
+#define general_max_slope_ 5 //整个地面的坡度阈值max slope of the ground in entire point cloud, degree
+#define reclass_distance_threshold_ 0.2 //判断是否为地面点的阈值，即：同一条线的相邻两个点之间的距离小于0.2才进行地面非地面的判断
 
 class PclTestCore
 {
